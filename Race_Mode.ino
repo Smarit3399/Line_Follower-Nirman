@@ -9,7 +9,7 @@ void holdHeading() {
 
 // True when the middle sensors are on a thin line again (end of a pivot).
 bool centered() {
-  bool middleOn = (darkness(7) > ON_LEVEL) || (darkness(8) > ON_LEVEL);
+  bool middleOn = (darkness(8) > ON_LEVEL) || (darkness(9) > ON_LEVEL);
   return middleOn && (leftCount + rightCount <= 4);
 }
 
@@ -26,14 +26,16 @@ void followLine() {
 void lostLine(uint32_t now) {
   if (lostSince == 0) lostSince = now;
 
-  if (fabs(linePos) > EDGE_POS) {             // it left past the edge: sharp or acute turn
+  if (EDGE_CASES && fabs(linePos) > EDGE_POS && now - lostSince >= LOST_MS) {        // sharp or acute turn: pivot
     turnDir = (linePos < 0) ? -1 : 1;
     raceMode = M_PIVOT;
     modeStart = now;
-  } else if (now - lostSince < GAP_MS) {      // it was near the middle: dotted gap, go straight
+  } else if (EDGE_CASES && fabs(linePos) <= EDGE_POS && now - lostSince < GAP_MS) {  // dotted gap: go straight
     holdHeading();
+  } else if (now - lostSince < LOST_STOP_MS) {  // keep turning toward the side the line was last seen on
+    MotorSearch(linePos < 0 ? -1 : 1);
   } else {
-    raceEnd();                                // lost for good: stop
+    raceEnd();                                  // lost for good: stop
   }
 }
 
@@ -47,7 +49,7 @@ void raceBegin() {
     delay(100);
   }
   OLEDFLAG = false;                           // the IMU needs the I2C bus alone
-  delay(80);
+  delay(4);
   yaw = 0;
   headingRef = 0;
   IMUFLAG = true;
@@ -77,8 +79,16 @@ void raceStep() {
   computePosition();
   uint32_t now = millis();
 
+  if (DEBUG) {                                // m: 0 follow, 1 cross, 2 step, 3 pivot
+    static uint32_t lastPrint = 0;
+    if (now - lastPrint >= 50) {
+      lastPrint = now;
+      Serial.printf("m=%d pos=%.0f L=%d R=%d found=%d turn=%.0f\n", (int)raceMode, linePos, leftCount, rightCount, (int)lineFound, (float)turn);
+    }
+  }
+
   // stop box: (almost) every sensor black for longer than any crossing bar seen so far
-  if (leftCount + rightCount >= BOX_MIN) {
+  if (EDGE_CASES && leftCount + rightCount >= BOX_MIN) {
     if (boxSince == 0) boxSince = now;
     uint32_t limit = 2 * longestBar;           // earlier bars teach us how long "all black" lasts on a crossing
     if (limit < BOX_MS) limit = BOX_MS;
@@ -89,9 +99,9 @@ void raceStep() {
     boxSince = 0;
   }
 
-  bool crossing = (leftCount >= 4 && rightCount >= 4 && leftCount + rightCount >= CROSS_MIN);
-  bool cornerL  = (leftCount  >= SIDE_MIN && rightCount <= 1);
-  bool cornerR  = (rightCount >= SIDE_MIN && leftCount  <= 1);
+  bool crossing = EDGE_CASES && (leftCount >= 4 && rightCount >= 4 && leftCount + rightCount >= CROSS_MIN);
+  bool cornerL  = EDGE_CASES && (leftCount  >= SIDE_MIN && rightCount <= 1);
+  bool cornerR  = EDGE_CASES && (rightCount >= SIDE_MIN && leftCount  <= 1);
 
   crossCnt  = crossing ? crossCnt + 1 : 0;                 // count scans in a row, so one noisy scan changes nothing
   cornerCnt = (cornerL || cornerR) ? cornerCnt + 1 : 0;

@@ -43,8 +43,8 @@ void SensorCalibration()
 
   digitalWrite(AIN1, HIGH); digitalWrite(AIN2, LOW);     // left forward
   digitalWrite(BIN1, LOW);  digitalWrite(BIN2, HIGH);    // right backward
-  ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 180 + deadL);
-  ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 180 + deadR);
+  ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, max(180, (int)deadL));
+  ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, max(180, (int)deadR));
   ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
   ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
 

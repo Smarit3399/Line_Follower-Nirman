@@ -99,12 +99,12 @@ void BTN_Read(void *param)
               {
                 if(lastState[0]!=btnUpPressed && btnUpPressed==true)
                 {
-                  baseSpeed+=50;
+                  baseSpeed+=25;
                   if(baseSpeed>1023) baseSpeed=1023;
                 }
                 else if(lastState[1]!=btnDownPressed && btnDownPressed==true)
                 {
-                  baseSpeed-=50;
+                  baseSpeed-=25;
                 } 
               }
                 if(btnSelectPressed!=lastState[2] && btnSelectPressed==true)

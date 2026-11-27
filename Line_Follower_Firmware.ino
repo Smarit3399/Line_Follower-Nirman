@@ -64,11 +64,11 @@ volatile uint32_t lastT;
 volatile float bias =0;
 volatile bool gyroDone = false; 
 volatile bool editing = false;
-volatile float kp = 1.0f;
-volatile float kd = 0.0f;
-volatile int baseSpeed = 400;
-volatile int deadL = 0;
-volatile int deadR = 0;
+volatile float kp = 1.6f;
+volatile float kd = 3.2f;
+volatile int baseSpeed = 275;
+volatile int deadL = 12;
+volatile int deadR =0;
 volatile unsigned long gyroSamples = 0;
 volatile int16_t gz;
 float prevError;
@@ -80,7 +80,7 @@ const float sensorWeight[16] = {
   15,   45,   75,  105,  135, 180, 226, 234
 };
 float linePos=0;
-volatile bool lineFound=false;
+volatile bool lineFound=true;
 volatile float turn = 0;
 volatile bool invertedMode = false;
 volatile bool raceRunning = false;
@@ -103,6 +103,11 @@ int   crossCnt = 0;                // consecutive scans that looked like a cross
 int   cornerCnt = 0;               // consecutive scans that looked like a corner or stub
 int   centerCnt = 0;               // consecutive scans the pivot looked finished
 
+const bool     EDGE_CASES   = true;  // false = plain line following only (crossings, corners, gaps and stop box off)
+const float    CURVE_SLOW   = 0.4f;   // slow down by up to this fraction when the line is far off center
+const uint32_t LOST_STOP_MS = 1500;   // stop if the line has been lost this long
+const bool     DEBUG        = false;  // true = prints what the race logic sees, 20 lines per second
+const uint32_t LOST_MS      = 20;     // the line must be gone this long (ms) before a pivot starts
 const int      ON_LEVEL     = 2000;  // darkness (0-4095) above this = sensor sees the line
 const int      CROSS_MIN    = 10;    // sensors on, both halves together = crossing
 const int      SIDE_MIN     = 5;     // sensors on in one half and almost none in the other = 90 degree corner
@@ -117,6 +122,7 @@ const uint32_t BOX_MS       = 120;   // ...for at least this long, and 2x longer
 const uint32_t PIVOT_MIN_MS = 80;    // a pivot cannot end before this
 const float    GYRO_GAIN    = 3.0f;  // turn added per degree of heading error
 void setup() {
+
   setCpuFrequencyMhz(240);
   //This section is to disable the wifi and bt so we can avoid any adc noice and free up cpu(this part is optional u can remove this and the line 7 and 8)
   esp_bt_controller_disable();
@@ -125,6 +131,7 @@ void setup() {
   esp_wifi_stop();
   esp_wifi_deinit();
   esp_wifi_set_mode(WIFI_MODE_NULL);
+  
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
   //This part is used to intialize all the pin modes
   for(int i=0;i<4;i++)
